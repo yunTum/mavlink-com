@@ -23,7 +23,9 @@ class ControlDrone:
     print("Heartbeat from system (system %u component %u)" % (self.the_connection.target_system, self.the_connection.target_component))
     print(self.the_connection)
     while True:
-      msg = self.the_connection.recv_match(type=None, blocking=True)
+      msg = self.the_connection.recv_match(type="ATTITUDE", blocking=True)
+      # msg = self.the_connection.recv_match(type="RAW_IMU", blocking=True).to_dict()
+      # msg = self.the_connection.messages["ATTITUDE"]
       print(msg)
   
   def arm(self):
