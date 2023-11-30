@@ -9,7 +9,7 @@ def main():
   args = sys.argv
   if len(args) > 1:
     if args[1] == 'test':
-      test_drone = test_command.ControlDrone(isUsbConnect=False)
+      test_drone = test_command.ControlDrone(isUDPConnect=True)
       test_drone.connect()
   else:
     drone = drone_manager.DroneManager(isUDPConnect=False)
