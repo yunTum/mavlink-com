@@ -4,7 +4,7 @@ import argparse
 import gui
 import drone_manager
 import test_command
-import search_com
+import utilities as util
 
 def main():
   parser = argparse.ArgumentParser(description='Drone Controller')
@@ -15,7 +15,7 @@ def main():
   if args.positional == 'com':
     # search comport
     print('search comport')
-    com = search_com.search_com()
+    com = util.search_com.search_com()
     print(com)
   # TODO: 処理フローの整理
   # テストコマンドの実行
