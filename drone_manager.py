@@ -3,59 +3,76 @@
 from pymavlink import mavutil
 
 class DroneManager():
-  def __init__(self, isUDPConnect = False):
+  def __init__(self, isUDPConnect = False, com_port='com9', udp_port='14550'):
     self.protocol = 'udpin'
     self.ipaddr = 'localhost'
-    self.port = '14550'
-    self.connect_type = 'com9'
+    self.port = udp_port
+    self.connect_type = com_port
     self.isUDPConnect = isUDPConnect
     self.the_connection = None
+    self.state = 'disconnected'
     self.abs_distance = [0, 0, 0] # x, y, z (m)
     self.abs_attitude = [0, 0, 0] # roll, pitch, yaw (rad)
     self.ground_speed = 5         # 速度 m/s
     self.altitude = 0             # 高度 m
+    # https://mavlink.io/en/messages/common.html#enums
+    self.mav_mode = mavutil.mavlink.MAV_MODE_FLAG_STABILIZE_ENABLED
     
-  
   def connect(self):
     if self.isUDPConnect:
       # Start a connection listening on a UDP port
       self.the_connection = mavutil.mavlink_connection(self.protocol + ':' + self.ipaddr + ':' + self.port)
       self.the_connection.wait_heartbeat()
+      self.state = 'connected'
     else:
       self.the_connection = mavutil.mavlink_connection(self.connect_type, baud=57600)
-      self.the_connection.wait_heartbeat()
+      self.state = 'connected'
     print("Heartbeat from system (system %u component %u)" % (self.the_connection.target_system, self.the_connection.target_component))
     return self.the_connection
+
+  def disconnect(self):
+    if self.the_connection != None:
+      self.the_connection.close()
+      self.the_connection = None
+      print('disconnected', self.the_connection)
+      self.state = 'disconnected'
+  
+  def get_status(self):
+    return self.state
     
   def arm(self, arm_flag):
     # リモートシステムの起動
     # arm_flag : 1 = アーム、0 = ディスアーム
     self.the_connection.mav.command_long_send(
       self.the_connection.target_system, self.the_connection.target_component, mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM, 0, arm_flag, 0, 0, 0, 0, 0, 0)
-
-    # コマンドの実行結果や失敗した際の詳細情報を受信する
-    msg = self.the_connection.recv_match(type="COMMAND_ACK", blocking=True)
-    print(msg)
   
-  def takeoff(self):
+  def takeoff(self, altitude):
+    self.altitude = altitude
     # リモートシステムを離陸させる
     # 離陸高度は10mに設定
     self.the_connection.mav.command_long_send(
       self.the_connection.target_system, self.the_connection.target_component, mavutil.mavlink.MAV_CMD_NAV_TAKEOFF, 0, 0, 0, 0, 0, 0, 0, self.altitude)
 
-    msg = self.the_connection.recv_match(type="COMMAND_ACK", blocking=True)
-    print(msg)
+    # msg = self.the_connection.recv_match(type="COMMAND_ACK", blocking=True)
+    # print(msg)
+    # return msg
   
-  def receive_msg(self, msg_type):
+  def land(self):
+    # リモートシステムを着陸させる
+    self.the_connection.mav.command_long_send(
+      self.the_connection.target_system, self.the_connection.target_component, mavutil.mavlink.MAV_CMD_NAV_LAND, 0, 0, 0, 0, 0, 0, 0, 0)
+  
+  def receive_msg(self):
     # type
     #  ATTITUDE: 姿勢情報メッセージを受信する
     #  LOCAL_POSITION_NED: 位置情報メッセージを受信する
     #  NAV_CONTROLLER_OUTPUT: 制御情報（ナビゲーション位置とコントローラーの状態）を受信する
     #  COMMAND_ACK: コマンドの実行結果や失敗した際の詳細情報を受信する
-    if(msg_type == ''):
-      msg_type = None
-    msg = self.the_connection.recv_match(type=msg_type, blocking=True)
+    msg = self.the_connection.recv_match(type=None, blocking=True)
     return msg
+  
+  def wait_heartbeat(self):
+    self.the_connection.wait_heartbeat()
   
   def move(self, diff_pos):
     # 移動
@@ -132,7 +149,17 @@ class DroneManager():
       0, 0, 0, 0)         # param 4 - 7 not used
     self.send_command(command)
 
+  def mode_change(self, flag=True, mode=mavutil.mavlink.MAV_MODE_FLAG_STABILIZE_ENABLED):
+    self.mav_mode = mode
+    self.the_connection.set_mode_flag(flag, mode)
+    msg = self.the_connection.recv_match(type="COMMAND_ACK", blocking=True)
+    return msg
+
   def send_command(self, command):
     # コマンドの送信
     # command : 送信するコマンド
     self.the_connection.mav.send(command)
+  
+  def get_current_location(self):
+    # 現在位置の取得
+    return self.the_connection.location()

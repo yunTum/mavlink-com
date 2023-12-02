@@ -1,11 +1,11 @@
 from pymavlink import mavutil
 
 class ControlDrone:
-  def __init__(self, isUDPConnect = False):
+  def __init__(self, isUDPConnect = False, com_port='com9', udp_port='14550'):
     self.protocol = 'udpin'
     self.ipaddr = '0.0.0.0'
-    self.port = '14550'
-    self.connect_type = 'com9'
+    self.port = udp_port
+    self.com_port = com_port
     self.isUDPConnect = isUDPConnect
     self.the_connection = None
     self.diffrence_foward = 0
@@ -18,14 +18,13 @@ class ControlDrone:
       # Start a connection listening on a UDP port
       self.the_connection = mavutil.mavlink_connection(self.protocol + ':' + self.ipaddr + ':' + self.port)
     else:
-      self.the_connection = mavutil.mavlink_connection(self.connect_type, baud=57600)
+      self.the_connection = mavutil.mavlink_connection(self.com_port, baud=57600)
     self.the_connection.wait_heartbeat()
     print("Heartbeat from system (system %u component %u)" % (self.the_connection.target_system, self.the_connection.target_component))
-    print(self.the_connection)
     while True:
-      # msg = self.the_connection.recv_match(type="ATTITUDE", blocking=True)
-      msg = self.the_connection.recv_match(type=None, blocking=True).to_dict()
-      #msg = self.the_connection.messages["HOME"]
+      msg = self.the_connection.recv_match(type=None, blocking=True)
+      # msg = self.the_connection.recv_match(type=None, blocking=True).to_dict()
+      # msg = self.the_connection.messages["MAV"].to_dict()
       print(msg)
   
   def arm(self):
