@@ -1,10 +1,10 @@
 from pymavlink import mavutil
 
 class ControlDrone:
-  def __init__(self, isUDPConnect = False, com_port='com9', udp_port='14550'):
+  def __init__(self, isUDPConnect = False, com_port='com9', port='14550'):
     self.protocol = 'udpin'
     self.ipaddr = '0.0.0.0'
-    self.port = udp_port
+    self.port = port
     self.com_port = com_port
     self.isUDPConnect = isUDPConnect
     self.the_connection = None
