@@ -1,18 +1,20 @@
 #!/usr/bin/env python
 
 from pymavlink import mavutil
+import utilities as util
 
 class DroneManager():
-  def __init__(self, isUDPConnect = False, com_port='com9', udp_port='14550'):
-    self.protocol = 'udpin'
+  def __init__(self, isUDPConnect = False, com_port='com9', port='14550'):
+    # self.protocol = 'udpin'
+    self.protocol = 'tcp'
     self.ipaddr = 'localhost'
-    self.port = udp_port
+    self.port = port
     self.connect_type = com_port
     self.isUDPConnect = isUDPConnect
     self.the_connection = None
     self.state = 'disconnected'
-    self.abs_distance = [0, 0, 0] # x, y, z (m)
-    self.abs_attitude = [0, 0, 0] # roll, pitch, yaw (rad)
+    self.local_pos = [0, 0, 0]    # x, y, z (m)
+    self.local_att = [0, 0, 0] # roll, pitch, yaw (rad)
     self.ground_speed = 5         # 速度 m/s
     self.altitude = 0             # 高度 m
     # https://mavlink.io/en/messages/common.html#enums
@@ -74,25 +76,34 @@ class DroneManager():
   def wait_heartbeat(self):
     self.the_connection.wait_heartbeat()
   
+  def set_local_pos(self, current_pos):
+    # 現在位置の設定
+    # current_pos : 現在位置（x, y, z）
+    self.local_pos = current_pos
+    
+  def get_local_pos(self):
+    # 現在位置の取得
+    return self.local_pos
+  
   def move(self, diff_pos):
     # 移動
+    # cnt_pos : 現在位置（x, y, z）
     # diff_pos : 移動量（x, y, z）の
     # type_maskオプション : 位置情報のみの送信（0b110111111000）を指定
     
     # ドローンの現在位置を取得
-    current_pos = self.the_connection.location()
-    new_pos = current_pos
-    new_pos.x += diff_pos[0]
-    new_pos.y += diff_pos[1]
-    new_pos.z += diff_pos[2]
-
-    command = mavutil.mavlink.set_position_target_local_ned_encode(
-      0,                                    # time_boot_ms (not used)
+    new_pos = [0, 0, 0]
+    new_pos[0] = self.local_pos[0] + diff_pos[0]
+    new_pos[1] = self.local_pos[1] + diff_pos[1]
+    new_pos[2] = self.local_pos[2] + diff_pos[2]
+    print('new_pos', new_pos)
+    command = self.the_connection.mav.set_position_target_local_ned_encode(
+      0,                    # time_boot_ms (not used)
       self.the_connection.target_system,    # target system
       self.the_connection.target_component, # component
       mavutil.mavlink.MAV_FRAME_LOCAL_NED,  # frame
       0b110111111000,                  # type_mask (only positions enabled)
-      new_pos.x, new_pos.y, new_pos.z,      # x, y, z positions (or North, East, Down in the MAV_FRAME_BODY_NED frame
+      new_pos[0], new_pos[1], new_pos[2],      # x, y, z positions (or North, East, Down in the MAV_FRAME_BODY_NED frame
       0, 0, 0,                              # x, y, z velocity in m/s  (not used)
       0, 0, 0,                              # x, y, z acceleration (not supported yet, ignored in GCS_Mavlink)
       0, 0)                                 # yaw, yaw_rate (not used)
@@ -119,23 +130,26 @@ class DroneManager():
     self.send_command(command)
 
 
-  def goto_waypoint(self, waypoint_pos, waypoint_altitude):
+  def set_waypoint(self, waypoint_pos, waypoint_altitude):
     # waypoint(-35.3629849, 149.1649185）の地点へ移動
-    command = mavutil.mavlink.set_position_target_global_int(
+    latitude = int(float(waypoint_pos[0]) * 1E7)
+    longitude = int(float(waypoint_pos[1]) * 1E7)
+    command = self.the_connection.mav.set_position_target_global_int_encode(
       0,                          # time_boot_ms (not used)
       self.the_connection.target_system,
       self.the_connection.target_component,
       mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT,
       0b110111111000,             # type_mask (only speeds enabled)
-      waypoint_pos.lat * 10 ** 7, # latitude in degrees * 1E7
-      waypoint_pos.lon * 10 ** 7, # longitude in degrees * 1E7
+      latitude,                   # latitude in degrees * 1E7
+      longitude,                  # longitude in degrees * 1E7
       waypoint_altitude,          # altitude in meters
       0, 0, 0,                    # velocity x, y, z
       0, 0, 0,                    # acceleration x, y, z
       0, 0)                       # yaw, yaw_rate
     self.send_command(command)
 
-  def change_speed(self):
+  def change_speed(self, speed=5):
+    self.ground_speed = speed
     # スピードの設定 
     # GroundSpeed（param1:0）で、目標速度を（param2）に指定
     command = self.the_connection.mav.command_long_encode(
@@ -149,17 +163,40 @@ class DroneManager():
       0, 0, 0, 0)         # param 4 - 7 not used
     self.send_command(command)
 
-  def mode_change(self, flag=True, mode=mavutil.mavlink.MAV_MODE_FLAG_STABILIZE_ENABLED):
-    self.mav_mode = mode
-    self.the_connection.set_mode_flag(flag, mode)
-    msg = self.the_connection.recv_match(type="COMMAND_ACK", blocking=True)
-    return msg
+  def mode_change(self, flag=True, mode_enable=mavutil.mavlink.MAV_MODE_FLAG_GUIDED_ENABLED, flight_mode=0):
+    # モードの変更
+    # flag : True = モードを有効化、False = モードを無効化
+    # mode_enable : 追加or削除するモードのフラグ
+    # https://mavlink.io/en/messages/common.html#MAV_MODE_FLAG
+    # flight_mode : フライトモード
+    # https://ardupilot.org/copter/docs/parameters.html#fltmode1
+    # フライトモード一覧
+    # 0 : STABILIZE
+    # 1 : ACRO
+    # 2 : ALT_HOLD
+    # 3 : AUTO
+    # 4 : GUIDED
+    # ...
+    if flag:
+      mode_enable = mode_enable | flag
+    else:
+      mode_enable = mode_enable & ~flag
+      
+    # # print('mode', mode)
+    self.the_connection.mav.command_long_send(
+      self.the_connection.target_system, self.the_connection.target_component, 176, 0, mode_enable, flight_mode, 0, 0, 0, 0, 0)
+  
+  def request_data_stream(self, interval):
+    # データストリームのリクエスト(Heartbeatの後に実行する必要あり)
+    # interval : データストリームの送信間隔（Hz）
+    self.the_connection.mav.request_data_stream_send(
+      self.the_connection.target_system, self.the_connection.target_component, 0, interval, 1)
 
   def send_command(self, command):
     # コマンドの送信
     # command : 送信するコマンド
     self.the_connection.mav.send(command)
   
-  def get_current_location(self):
+  def get_glb_location(self):
     # 現在位置の取得
     return self.the_connection.location()

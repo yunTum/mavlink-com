@@ -18,3 +18,25 @@ def search_com():
         if port.device == '/dev/ttyACM0':
             return port.device
     return None
+  
+def mav_result(num):
+  if num == 0:
+    return 'ACCEPTED'
+  elif num == 1:
+    return 'TEMPORARILY_REJECTED'
+  elif num == 2:
+    return 'DENIED'
+  elif num == 3:
+    return 'UNSUPPORTED'
+  elif num == 4:
+    return 'FAILED'
+  elif num == 5:
+    return 'IN_PROGRESS'
+  elif num == 6:
+    return 'CANCELLED'
+  elif num == 7:
+    return 'LONG_ONLY'
+  elif num == 8:
+    return 'INT_ONLY'
+  else:
+    return 'UNSUPPORTED_MAV_FRAME'
