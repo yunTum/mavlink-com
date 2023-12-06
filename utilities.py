@@ -40,3 +40,33 @@ def mav_result(num):
     return 'INT_ONLY'
   else:
     return 'UNSUPPORTED_MAV_FRAME'
+
+def mav_mode(num):
+  if num == 80:
+    return 'STABILIZE_DISARMED'
+  elif num == 208:
+    return 'STABILIZE_ARMED'
+  elif num == 64:
+    return 'MANUAL_DISARMED'
+  elif num == 192:
+    return 'MANUAL_ARMED'
+  elif num == 88:
+    return 'GUIDED_DISARMED'
+  elif num == 216:
+    return 'GUIDED_ARMED'
+  elif num == 92:
+    return 'AUTO_DISARMED'
+  elif num == 220:
+    return 'AUTO_ARMED'
+  elif num == 66:
+    return 'TEST_DISARMED'
+  elif num == 194:
+    return 'TEST_ARMED'
+
+def base_mode(mode):
+  mask = 0b00000001
+  return mode & ~mask
+
+def enable_check(mode):
+  mask = 0b0000001
+  return mode & mask
