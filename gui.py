@@ -66,7 +66,7 @@ class Controller:
     arm_frame = sg.Frame('',
       [
         [sg.Text('Armming')],
-        [sg.Button('ARM', key='-ARM-'), sg.Button('DISARM', key='-DISARM-', disabled=True)],
+        [sg.Button('ARM', key='-ARM-'), sg.Button('DISARM', key='-DISARM-', disabled=True), sg.Checkbox('Force', key='-FORCE-')],
       ], size=(200,100)
     )                       
     flight_flame = sg.Frame('',
@@ -85,7 +85,8 @@ class Controller:
     waypoint_frame = sg.Frame('',
       [
         [sg.Text('Waypoint')],
-        [sg.Text('Latitude:'), sg.InputText('0', size=(6,1), key='-WAYPOINTLATITUDE-'), sg.Text('°'), sg.Text('Longitude:'), sg.InputText('0', size=(6,1), key='-WAYPOINTLONGITUDE-'), sg.Text('°')],
+        [sg.Text('Latitude:'), sg.InputText('0', size=(18,1), key='-WAYPOINTLATITUDE-', pad=((16,0), (0,0))), sg.Text('°')], 
+        [sg.Text('Longitude:'), sg.InputText('0', size=(18,1), key='-WAYPOINTLONGITUDE-', pad=((6,0), (0,0))), sg.Text('°')],
         [sg.Button('SET', key='-WAYPOINT-')],
       ], size=(200,100)
     )
@@ -93,8 +94,8 @@ class Controller:
       [
         [sg.Text('Move Diff')],
         [sg.Text('X:'), sg.InputText('5', size=(4,1), key='-MOVEDIFFX-'), sg.Text('m'),
-         sg.Text('Y:'),sg.InputText('5', size=(4,1), key='-MOVEDIFFY-'), sg.Text('m'),
-         sg.Text('PITCH:'),sg.InputText('20', size=(4,1), key='-MOVEPITCH-'), sg.Text('°')],
+        sg.Text('Y:'),sg.InputText('5', size=(4,1), key='-MOVEDIFFY-'), sg.Text('m'),
+        sg.Text('PITCH:'),sg.InputText('20', size=(4,1), key='-MOVEPITCH-'), sg.Text('°')],
       ], size=(200,100)
     )
     move_frame = sg.Frame('',
@@ -133,7 +134,7 @@ class Controller:
               ]
 
     self.window = sg.Window('GuiController', layout, resizable=True, finalize=True, size=(800, 700))
-  
+
   def run(self):
     while True:
       event, values = self.window.read(timeout=100)
@@ -254,16 +255,29 @@ class Controller:
         self.log_text += update_text + '\n'
         self.window['-LOGGING-'].update(self.log_text)
         if (command_id == '400' and result == '0' and self.arm_flag == False):
+          # self.window['-ARMSTATUS-'].update('armed')
+          # self.window['-ARM-'].update(disabled=True)
+          # self.window['-DISARM-'].update(disabled=False)
+          self.arm_flag = True
+        elif (command_id == '400' and result_id == '0' and self.arm_flag == True):
+          # self.window['-ARMSTATUS-'].update('disarmed')
+          # self.window['-ARM-'].update(disabled=False)
+          # self.window['-DISARM-'].update(disabled=True)
+          self.arm_flag = False
+      elif msg_dict['mavpackettype'] == 'HEARTBEAT':
+        base_mode = int(msg_dict['base_mode'])
+        raw_mode = util.base_mode(base_mode)
+        self.window['-MODE-'].update(util.mav_mode(raw_mode))
+        if util.enable_check(base_mode):
           self.window['-ARMSTATUS-'].update('armed')
           self.window['-ARM-'].update(disabled=True)
           self.window['-DISARM-'].update(disabled=False)
           self.arm_flag = True
-        elif (command_id == '400' and result == '0' and self.arm_flag == True):
+        else:
           self.window['-ARMSTATUS-'].update('disarmed')
           self.window['-ARM-'].update(disabled=False)
           self.window['-DISARM-'].update(disabled=True)
           self.arm_flag = False
-      elif msg_dict['mavpackettype'] == 'HEARTBEAT':
         print(msg_dict)
       
   def takeoff(self):
@@ -289,6 +303,8 @@ class Controller:
   def arm(self):
     if self.state == 'connected':
       try:
+        if self.window['-FORCE-'].get():
+          self.drone_manager.arm(arm_flag=1, force=True)
         self.drone_manager.arm(arm_flag=1)
         self.log_text += 'arm\n'
         self.window['-LOGGING-'].print(self.log_text)
@@ -300,6 +316,8 @@ class Controller:
   def disarm(self):
     if self.state == 'connected':
       try:
+        if self.window['-FORCE-'].get():
+          self.drone_manager.arm(arm_flag=0, force=True)
         self.drone_manager.arm(arm_flag=0)
         self.log_text += 'disarm\n'
         self.window['-LOGGING-'].print(self.log_text)
@@ -338,7 +356,7 @@ class Controller:
     if self.state == 'connected':
       try:
         diff = int(self.window['-MOVEDIFFY-'].get())
-        self.drone_manager.move(diff_pos=[0, diff, 0])
+        self.drone_manager.move(diff_pos=[0, -diff, 0])
         self.log_text += 'move_left\n'
         self.window['-LOGGING-'].print(self.log_text)
       except Exception as e:
@@ -348,7 +366,7 @@ class Controller:
     if self.state == 'connected':
       try:
         diff = int(self.window['-MOVEDIFFY-'].get())
-        self.drone_manager.move(diff_pos=[0, -diff, 0])
+        self.drone_manager.move(diff_pos=[0, diff, 0])
         self.log_text += 'move_right\n'
         self.window['-LOGGING-'].print(self.log_text)
       except Exception as e:
