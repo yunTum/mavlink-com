@@ -7,7 +7,7 @@ class DroneManager():
   def __init__(self, isUDPConnect = False, com_port='com9', port='14550'):
     # self.protocol = 'udpin'
     self.protocol = 'tcp'
-    self.ipaddr = 'localhost'
+    self.ipaddr = '0.0.0.0'
     self.port = port
     self.connect_type = com_port
     self.isUDPConnect = isUDPConnect
@@ -42,11 +42,12 @@ class DroneManager():
   def get_status(self):
     return self.state
     
-  def arm(self, arm_flag):
+  def arm(self, arm_flag, force=False):
     # リモートシステムの起動
     # arm_flag : 1 = アーム、0 = ディスアーム
+    # force : True = 強制的にアーム
     self.the_connection.mav.command_long_send(
-      self.the_connection.target_system, self.the_connection.target_component, mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM, 0, arm_flag, 0, 0, 0, 0, 0, 0)
+      self.the_connection.target_system, self.the_connection.target_component, mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM, 0, arm_flag, force, 0, 0, 0, 0, 0)
   
   def takeoff(self, altitude):
     self.altitude = altitude
