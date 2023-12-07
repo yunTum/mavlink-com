@@ -42,31 +42,49 @@ def mav_result(num):
     return 'UNSUPPORTED_MAV_FRAME'
 
 def mav_mode(num):
+  if num == 0:
+    return 'STABILIZE'
+  elif num == 3:
+    return 'AUTO'
+  elif num == 4:
+    return 'GUIDED'
+  elif num == 8:
+    return 'POSITION'
+  elif num == 9:
+    return 'LAND'
+  elif num == 16:
+    return 'POSHOLD'
+  elif num == 18:
+    return 'THROW'
+  elif num == 20:
+    return 'GUIDED_NOGPS'
+  else:
+    return 'UNKNOWN'
+    
+def mav_mode_arm(num):
   if num == 80:
-    return 'STABILIZE_DISARMED'
+    return 'STABILIZE_DISARMED', False
   elif num == 208:
-    return 'STABILIZE_ARMED'
+    return 'STABILIZE_ARMED', True
   elif num == 64:
-    return 'MANUAL_DISARMED'
+    return 'MANUAL_DISARMED', False
   elif num == 192:
-    return 'MANUAL_ARMED'
+    return 'MANUAL_ARMED', True
   elif num == 88:
-    return 'GUIDED_DISARMED'
+    return 'GUIDED_DISARMED', False
   elif num == 216:
-    return 'GUIDED_ARMED'
+    return 'GUIDED_ARMED', True
   elif num == 92:
-    return 'AUTO_DISARMED'
+    return 'AUTO_DISARMED', False
   elif num == 220:
-    return 'AUTO_ARMED'
+    return 'AUTO_ARMED', True
   elif num == 66:
-    return 'TEST_DISARMED'
+    return 'TEST_DISARMED', False
   elif num == 194:
-    return 'TEST_ARMED'
+    return 'TEST_ARMED', True
+  else:
+    return 'UNKNOWN', False
 
 def base_mode(mode):
   mask = 0b00000001
   return mode & ~mask
-
-def enable_check(mode):
-  mask = 0b0000001
-  return mode & mask

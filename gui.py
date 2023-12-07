@@ -7,7 +7,6 @@ class Controller:
   def __init__(self, drone_manager):
     self.drone_manager = drone_manager
     self.state = 'init'
-    self.mode = {'flag':False, 'mode_enable': 0, 'flight_mode': 0}
     self.window = None
     self.recv_msg_thread = threading.Thread(target=self.recv_msg)
     self.log_text = ''
@@ -41,15 +40,15 @@ class Controller:
     drone_state_frame = sg.Frame('',
       [
         [sg.Text('Drone State')],
-        [sg.Text('Socket:'), sg.Text('disconneted', key='-SOCKET-', size=(10,1))],
-        [sg.Text('Mode:'), sg.Text('STABLE', key='-MODE-', size=(10,1))],
-        [sg.Text('Arm:'), sg.Text('disarmed', key='-ARMSTATUS-', size=(10,1))]
+        [sg.Text('Socket:'), sg.Text('DICONNECTED', key='-SOCKET-', size=(18,1))],
+        [sg.Text('Mode:'), sg.Text('STABLE', key='-MODE-', size=(18,1))],
+        [sg.Text('Arm:'), sg.Text('DISARMED', key='-ARMSTATUS-', size=(18,1))]
       ], size=(200,150)
     )
     connect_frame = sg.Frame('',
       [
         [sg.Text('Connect')],
-        [sg.Button('Connect', key='-CONNECT-'), sg.Button('Disconnect', key='-DISCONNECT-', disabled=True)],
+        [sg.Button('CONNECT', key='-CONNECT-'), sg.Button('DICONNECTED', key='-DISCONNECT-', disabled=True)],
       ]
     )
     mode_change_frame = sg.Frame('',
@@ -66,7 +65,7 @@ class Controller:
     arm_frame = sg.Frame('',
       [
         [sg.Text('Armming')],
-        [sg.Button('ARM', key='-ARM-'), sg.Button('DISARM', key='-DISARM-', disabled=True), sg.Checkbox('Force', key='-FORCE-')],
+        [sg.Button('ARM', key='-ARM-', disabled=True), sg.Button('DISARM', key='-DISARM-', disabled=True), sg.Checkbox('Force', key='-FORCE-')],
       ], size=(200,100)
     )                       
     flight_flame = sg.Frame('',
@@ -184,20 +183,14 @@ class Controller:
       self.window['-CONNECT-'].update(disabled=True)
       self.window['-DISCONNECT-'].update(disabled=False)
       if (self.drone_manager.get_status() == 'connected'):
-        print('connected')
-        self.window['-SOCKET-'].update('connected')
+        self.window['-SOCKET-'].update('CONNECTED')
         self.state = 'connected'
-        self.window['-LOGGING-'].print('connected')
+        self.window['-LOGGING-'].print('CONNECTED')
         self.drone_manager.wait_heartbeat()
-        self.mode = {'flag':True, 'mode_enable': 8, 'flight_mode': 4}
-        self.drone_manager.mode_change(flag=self.mode['flag'], mode_enable=self.mode['mode_enable'], flight_mode=self.mode['flight_mode'])
-        self.log_text += 'mode' + '\n'
-        self.window['-LOGGING-'].print(self.log_text)
-        self.window['-MODE-'].update(self.mode['flight_mode'])
         self.drone_manager.request_data_stream(5)
         self.recv_msg_thread.start()
       else:
-        self.window['-SOCKET-'].update('disconnected')
+        self.window['-SOCKET-'].update('DISCONNECTED')
         self.state = 'init'
     except Exception as e:
       print(e)
@@ -210,8 +203,8 @@ class Controller:
       self.drone_manager.disconnect()
       self.window['-CONNECT-'].update(disabled=False)
       self.window['-DISCONNECT-'].update(disabled=True)
-      self.window['-SOCKET-'].update('disconnected')
-      self.window['-LOGGING-'].print('disconnected')
+      self.window['-SOCKET-'].update('DISCONNECTED')
+      self.window['-LOGGING-'].print('DISCONNECTED')
     except Exception as e:
       print(e)
 
@@ -254,31 +247,15 @@ class Controller:
         update_text = 'CommandID: ' + command_id + ', ' + ' Result: ' + result
         self.log_text += update_text + '\n'
         self.window['-LOGGING-'].update(self.log_text)
-        if (command_id == '400' and result == '0' and self.arm_flag == False):
-          # self.window['-ARMSTATUS-'].update('armed')
-          # self.window['-ARM-'].update(disabled=True)
-          # self.window['-DISARM-'].update(disabled=False)
-          self.arm_flag = True
-        elif (command_id == '400' and result_id == '0' and self.arm_flag == True):
-          # self.window['-ARMSTATUS-'].update('disarmed')
-          # self.window['-ARM-'].update(disabled=False)
-          # self.window['-DISARM-'].update(disabled=True)
-          self.arm_flag = False
-      elif msg_dict['mavpackettype'] == 'HEARTBEAT':
-        base_mode = int(msg_dict['base_mode'])
-        raw_mode = util.base_mode(base_mode)
-        self.window['-MODE-'].update(util.mav_mode(raw_mode))
-        if util.enable_check(base_mode):
-          self.window['-ARMSTATUS-'].update('armed')
-          self.window['-ARM-'].update(disabled=True)
-          self.window['-DISARM-'].update(disabled=False)
-          self.arm_flag = True
-        else:
-          self.window['-ARMSTATUS-'].update('disarmed')
-          self.window['-ARM-'].update(disabled=False)
-          self.window['-DISARM-'].update(disabled=True)
-          self.arm_flag = False
+      elif msg_dict['mavpackettype'] == 'HEARTBEAT' and msg_dict['type'] == 2:
+        mode = util.mav_mode(msg_dict['custom_mode'])
+        self.window['-MODE-'].update(mode)
+        raw_mode = util.base_mode(int(msg_dict['base_mode']))
+        mode_arm_str, self.arm_flag = util.mav_mode_arm(raw_mode)
         print(msg_dict)
+        self.window['-ARMSTATUS-'].update(mode_arm_str)
+        self.window['-ARM-'].update(disabled=self.arm_flag)
+        self.window['-DISARM-'].update(disabled=not self.arm_flag)
       
   def takeoff(self):
     if self.state == 'connected':
@@ -309,7 +286,7 @@ class Controller:
         self.log_text += 'arm\n'
         self.window['-LOGGING-'].print(self.log_text)
         self.arm_flag = True
-        self.window['-ARMSTATUS-'].update('armed')
+        self.window['-ARMSTATUS-'].update('ARMED')
       except Exception as e:
         print(e)
   
@@ -322,7 +299,7 @@ class Controller:
         self.log_text += 'disarm\n'
         self.window['-LOGGING-'].print(self.log_text)
         self.arm_flag = False
-        self.window['-ARMSTATUS-'].update('disarmed')
+        self.window['-ARMSTATUS-'].update('DISARMED')
       except Exception as e:
         print(e)
 
@@ -406,13 +383,9 @@ class Controller:
   def change_mode(self, mode_enable, flight_mode):
     if self.state == 'connected':
       try:
-        self.mode['flag'] = True
-        self.mode['mode_enable'] = mode_enable
-        self.mode['flight_mode'] = flight_mode
         self.drone_manager.mode_change(flag=True, mode_enable=mode_enable, flight_mode=flight_mode)
         self.log_text += 'change_mode\n'
         self.window['-LOGGING-'].print(self.log_text)
-        self.window['-MODE-'].update(self.mode['flight_mode'])
       except Exception as e:
         print(e)
         
