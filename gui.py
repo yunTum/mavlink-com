@@ -94,7 +94,7 @@ class Controller:
         [sg.Text('Move Diff')],
         [sg.Text('X:'), sg.InputText('5', size=(4,1), key='-MOVEDIFFX-'), sg.Text('m')],
         [sg.Text('Y:'),sg.InputText('5', size=(4,1), key='-MOVEDIFFY-'), sg.Text('m')],
-        [sg.Text('PITCH:'),sg.InputText('20', size=(4,1), key='-MOVEPITCH-'), sg.Text('°')],
+        [sg.Text('YAW:'),sg.InputText('20', size=(4,1), key='-MOVEYAW-'), sg.Text('°')],
       ], size=(200,100)
     )
     move_frame = sg.Frame('',
@@ -352,7 +352,7 @@ class Controller:
   def move_leftroll(self):
     if self.state == 'connected':
       try:
-        diff = int(self.window['-MOVEPITCH-'].get())
+        diff = int(self.window['-MOVEYAW-'].get())
         self.drone_manager.change_yaw(diff, 1, -1)
         self.log_text += 'move_leftroll\n'
         self.window['-LOGGING-'].print(self.log_text)
@@ -362,7 +362,7 @@ class Controller:
   def move_rightroll(self):
     if self.state == 'connected':
       try:
-        diff = int(self.window['-MOVEPITCH-'].get())
+        diff = int(self.window['-MOVEYAW-'].get())
         self.drone_manager.change_yaw(diff, 1, 0)
         self.log_text += 'move_rightroll\n'
         self.window['-LOGGING-'].print(self.log_text)
