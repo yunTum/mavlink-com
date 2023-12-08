@@ -92,9 +92,9 @@ class Controller:
     move_diff_frame = sg.Frame('',
       [
         [sg.Text('Move Diff')],
-        [sg.Text('X:'), sg.InputText('5', size=(4,1), key='-MOVEDIFFX-'), sg.Text('m'),
-        sg.Text('Y:'),sg.InputText('5', size=(4,1), key='-MOVEDIFFY-'), sg.Text('m'),
-        sg.Text('PITCH:'),sg.InputText('20', size=(4,1), key='-MOVEPITCH-'), sg.Text('°')],
+        [sg.Text('X:'), sg.InputText('5', size=(4,1), key='-MOVEDIFFX-'), sg.Text('m')],
+        [sg.Text('Y:'),sg.InputText('5', size=(4,1), key='-MOVEDIFFY-'), sg.Text('m')],
+        [sg.Text('PITCH:'),sg.InputText('20', size=(4,1), key='-MOVEPITCH-'), sg.Text('°')],
       ], size=(200,100)
     )
     move_frame = sg.Frame('',
