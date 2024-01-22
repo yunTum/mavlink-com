@@ -7,7 +7,7 @@ class DroneManager():
   def __init__(self, isUDPConnect = False, com_port='com9', port='14550'):
     # self.protocol = 'udpin'
     self.protocol = 'tcp'
-    self.ipaddr = '0.0.0.0'
+    self.ipaddr = '127.0.0.1'
     self.port = port
     self.connect_type = com_port
     self.isUDPConnect = isUDPConnect
@@ -86,23 +86,28 @@ class DroneManager():
     # 現在位置の取得
     return self.local_pos
   
-  def move(self, diff_pos):
+  def move(self, diff_pos, isBodyLocal=True):
     # 移動
     # cnt_pos : 現在位置（x, y, z）
-    # diff_pos : 移動量（x, y, z）の
-    # type_maskオプション : 位置情報のみの送信（0b110111111000）を指定
-    
-    # ドローンの現在位置を取得
+    # diff_pos : 移動量（x, y, z）
+    # isBodyLocal : True = ボディ座標系、False = ローカル座標系
     new_pos = [0, 0, 0]
-    new_pos[0] = self.local_pos[0] + diff_pos[0]
-    new_pos[1] = self.local_pos[1] + diff_pos[1]
-    new_pos[2] = self.local_pos[2] + diff_pos[2]
-    print('new_pos', new_pos)
+    frame = mavutil.mavlink.MAV_FRAME_LOCAL_NED
+    if isBodyLocal:
+      new_pos[0] = diff_pos[0]
+      new_pos[1] = diff_pos[1]
+      new_pos[2] = diff_pos[2]
+      frame = mavutil.mavlink.MAV_FRAME_BODY_NED
+    else:
+      new_pos[0] = self.local_pos[0] + diff_pos[0]
+      new_pos[1] = self.local_pos[1] + diff_pos[1]
+      new_pos[2] = self.local_pos[2] + diff_pos[2]
+
     command = self.the_connection.mav.set_position_target_local_ned_encode(
       0,                    # time_boot_ms (not used)
       self.the_connection.target_system,    # target system
       self.the_connection.target_component, # component
-      mavutil.mavlink.MAV_FRAME_LOCAL_NED,  # frame
+      frame,                                # frame
       0b110111111000,                  # type_mask (only positions enabled)
       new_pos[0], new_pos[1], new_pos[2],      # x, y, z positions (or North, East, Down in the MAV_FRAME_BODY_NED frame
       0, 0, 0,                              # x, y, z velocity in m/s  (not used)
