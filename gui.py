@@ -35,7 +35,7 @@ class Controller:
         [sg.Text('Altitude:', size=(11, 1)), sg.Text('0', key='-ALTITUDE-', size=(8, 1)), sg.Text('m')],
         [sg.Text('Latitude:', size=(11, 1)), sg.Text('0', key='-LATITUDE-', size=(8, 1)), sg.Text('°')],
         [sg.Text('Longitude:', size=(11, 1)), sg.Text('0', key='-LONGITUDE-', size=(8, 1)), sg.Text('°')],
-      ], size=(200,350)
+      ], size=(250,450)
     )
     drone_state_frame = sg.Frame('',
       [
